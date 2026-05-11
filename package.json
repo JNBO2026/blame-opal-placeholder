@@ -1,0 +1,26 @@
+{
+  "name": "blame-opal-placeholder",
+  "version": "1.0.0",
+  "description": "Retro pixel-shooter placeholder site for Blame Opal Studio.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "blame-opal",
+    "placeholder",
+    "game",
+    "canvas",
+    "retro"
+  ],
+  "author": "Blame Opal",
+  "license": "MIT",
+  "private": true
+}

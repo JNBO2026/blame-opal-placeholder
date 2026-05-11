@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Blame Opal — Pixel Defender</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#02030a" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: 'WetInk Display';
+    src: url('fonts/WetInk-Display.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+  :root {
+    --bg: #05060a;
+    --grid: #0d1018;
+    --accent: #67FF67;
+    --danger: #ff2e63;
+    --warn: #ffd400;
+    --power-rapid: #67FF67;
+    --power-spread: #ff8a00;
+    --power-explode: #ff2e63;
+    --power-freeze: #8ad9ff;
+    --power-nuke: #ffd400;
+    --text: #ffffff;
+    --font-body: 'Roboto Mono', 'Courier New', monospace;
+    --font-display: 'WetInk Display', 'Roboto Mono', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: radial-gradient(ellipse at center, #0b0f1c 0%, #02030a 80%);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-weight: 400;
+    text-transform: uppercase;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 8px;
+  }
+  .frame {
+    position: relative;
+    width: min(960px, 100%);
+    height: min(720px, calc(100dvh - 16px));
+    aspect-ratio: 4 / 3;
+    background: var(--bg);
+    border: 3px solid var(--accent);
+    border-radius: 6px;
+    box-shadow:
+      0 0 30px rgba(103,255,103,0.25),
+      inset 0 0 80px rgba(103,255,103,0.05);
+    overflow: hidden;
+    image-rendering: pixelated;
+  }
+  /* On portrait / narrow screens, drop the strict aspect ratio so the game can fill the screen */
+  @media (max-aspect-ratio: 4/3) {
+    .frame {
+      aspect-ratio: auto;
+      width: 100%;
+      height: calc(100dvh - 16px);
+    }
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    touch-action: none;
+  }
+  .hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 8px 14px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    pointer-events: none;
+    text-shadow: 0 0 8px rgba(103,255,103,0.8);
+    z-index: 2;
+    gap: 8px;
+  }
+  .hud .col { min-width: 0; }
+  .hud .col.center { text-align: center; }
+  .hud .col.right { text-align: right; }
+  .hud .label { color: var(--accent); }
+  .hud .value { color: #fff; font-size: 16px; }
+
+  .powerStatus {
+    position: absolute;
+    top: 56px;
+    left: 0; right: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 10px;
+    z-index: 2;
+    pointer-events: none;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .powerStatus .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    text-shadow: 0 0 8px currentColor;
+    background: rgba(0,0,0,0.5);
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: rgba(2,3,10,0.88);
+    z-index: 3;
+    padding: 24px;
+  }
+  .overlay h1 {
+    font-family: var(--font-display);
+    font-size: clamp(56px, 11vw, 128px);
+    letter-spacing: 2px;
+    text-transform: none;
+    color: #fff;
+    line-height: 0.9;
+    text-shadow:
+      0 0 12px var(--accent),
+      0 0 28px var(--accent);
+    margin-bottom: 18px;
+  }
+  .overlay h2 {
+    font-size: clamp(18px, 3vw, 28px);
+    color: var(--danger);
+    letter-spacing: 4px;
+    margin-bottom: 14px;
+  }
+  .overlay p {
+    font-size: 13px;
+    line-height: 1.7;
+    letter-spacing: 1px;
+    max-width: 520px;
+    color: #cfd8e3;
+    margin-bottom: 8px;
+  }
+  .overlay .keys {
+    margin: 12px 0 8px;
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 2px;
+    line-height: 1.8;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 16px;
+    margin: 12px 0 4px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #cfd8e3;
+  }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .legend .chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    font-weight: bold;
+    color: #02030a;
+    font-size: 12px;
+  }
+  .legend .chip.r { background: var(--power-rapid); }
+  .legend .chip.s { background: var(--power-spread); }
+  .legend .chip.e { background: var(--power-explode); color: #fff; }
+  .legend .chip.f { background: var(--power-freeze); }
+  .legend .chip.n { background: var(--power-nuke); }
+  .legend .rare { color: var(--power-nuke); letter-spacing: 3px; }
+
+  .placeholderNote {
+    max-width: 540px;
+    margin: 0 auto 18px;
+    padding: 14px 18px;
+    border: 1px dashed rgba(103,255,103,0.5);
+    border-radius: 4px;
+    color: #cfd8e3;
+    font-size: 12px;
+    line-height: 1.7;
+    letter-spacing: 1.5px;
+    background: rgba(103,255,103,0.04);
+  }
+  .placeholderNote strong {
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  .socials {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 18px;
+  }
+  .socials a {
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(103,255,103,0.4);
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    text-decoration: none;
+  }
+  .socials a:hover {
+    color: #02030a;
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px rgba(103,255,103,0.6);
+  }
+  .socials svg { display: block; }
+
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+    width: min(280px, 100%);
+  }
+  .overlay button, .overlay a.btn {
+    display: inline-block;
+    width: 100%;
+    padding: 12px 22px;
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .overlay a.btn.secondary {
+    color: #fff;
+    border-color: #fff;
+  }
+  .overlay button:hover, .overlay a.btn:hover {
+    background: var(--accent);
+    color: #02030a;
+    box-shadow: 0 0 20px rgba(103,255,103,0.8);
+  }
+  .overlay a.btn.secondary:hover {
+    background: #fff;
+    color: #02030a;
+    box-shadow: 0 0 20px #fff;
+  }
+  .hidden { display: none !important; }
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.15) 3px,
+      rgba(0,0,0,0) 4px
+    );
+    pointer-events: none;
+    z-index: 4;
+    mix-blend-mode: multiply;
+  }
+  .mobileHint {
+    position: absolute;
+    bottom: 10px; left: 0; right: 0;
+    text-align: center;
+    color: rgba(255,255,255,0.4);
+    font-size: 11px;
+    letter-spacing: 2px;
+    pointer-events: none;
+    z-index: 2;
+  }
+  @media (hover: hover) {
+    .mobileHint { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="frame" id="frame">
+    <div class="hud">
+      <div class="col">
+        <div class="label">Score</div>
+        <div class="value" id="score">0</div>
+      </div>
+      <div class="col center">
+        <div class="label">Level</div>
+        <div class="value" id="level">1</div>
+      </div>
+      <div class="col right">
+        <div class="label">Pixels</div>
+        <div class="value" id="remaining">0</div>
+      </div>
+    </div>
+
+    <div class="powerStatus" id="powerStatus"></div>
+
+    <canvas id="game"></canvas>
+
+    <div class="mobileHint">Drag to move &nbsp;·&nbsp; Tap & hold to fire</div>
+
+    <div class="overlay" id="startScreen">
+      <h1>BLAME OPAL</h1>
+      <div class="placeholderNote">
+        <strong>Whilst you wait for our studio website to be live,</strong>
+        we didn't want you to make the visit and leave empty-handed —
+        so enjoy this game we've put here as a placeholder.
+      </div>
+      <div class="legend">
+        <div class="item"><span class="chip r">R</span> Rapid fire</div>
+        <div class="item"><span class="chip s">S</span> Spread shot</div>
+        <div class="item"><span class="chip e">E</span> Explosive</div>
+        <div class="item"><span class="chip f">F</span> Freeze</div>
+        <div class="item"><span class="chip n">N</span> <span class="rare">Nuke · 1 in 100</span></div>
+      </div>
+      <div class="keys">
+        Desktop: ◄ ► / A D to move &nbsp;·&nbsp; SPACE or click to fire<br>
+        Mobile: drag finger to move &nbsp;·&nbsp; tap & hold to fire
+      </div>
+      <div class="actions">
+        <button id="startBtn">Start Game</button>
+        <a class="btn secondary" href="mailto:james@blameopal.studio">Get in Touch</a>
+      </div>
+      <div class="socials">
+        <a href="https://www.instagram.com/blameopal" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="5"/>
+            <circle cx="12" cy="12" r="4"/>
+            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </a>
+        <a href="https://www.tiktok.com/@blameopal" target="_blank" rel="noopener" aria-label="TikTok">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M19.6 8.3c-1.7 0-3.2-.6-4.4-1.6v8.7c0 3-2.4 5.4-5.4 5.4S4.4 18.4 4.4 15.4 6.8 10 9.8 10c.3 0 .7 0 1 .1v3.1c-.3-.1-.6-.2-1-.2-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V2.5h3c0 2.5 2 4.5 4.5 4.5z"/>
+          </svg>
+        </a>
+        <a href="https://www.linkedin.com/company/blame-opal/" target="_blank" rel="noopener" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M5 3.5C5 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 5 2.12 5 3.5zM.22 8h4.56v14H.22V8zm7.5 0h4.37v1.92h.06c.61-1.15 2.1-2.36 4.32-2.36 4.62 0 5.47 3.04 5.47 7V22h-4.56v-6.6c0-1.57-.03-3.6-2.2-3.6-2.2 0-2.53 1.72-2.53 3.49V22H7.72V8z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="endScreen">
+      <h2 id="endTitle">GAME OVER</h2>
+      <p id="endMessage">The pixels reached the ground.</p>
+      <p>Final Score: <span id="finalScore">0</span></p>
+      <p>Level Reached: <span id="finalLevel">1</span></p>
+      <div class="actions">
+        <button id="restartBtn">Play Again</button>
+        <a class="btn secondary" href="mailto:james@blameopal.studio">Get in Touch</a>
+      </div>
+      <div class="socials">
+        <a href="https://www.instagram.com/blameopal" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="5"/>
+            <circle cx="12" cy="12" r="4"/>
+            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </a>
+        <a href="https://www.tiktok.com/@blameopal" target="_blank" rel="noopener" aria-label="TikTok">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M19.6 8.3c-1.7 0-3.2-.6-4.4-1.6v8.7c0 3-2.4 5.4-5.4 5.4S4.4 18.4 4.4 15.4 6.8 10 9.8 10c.3 0 .7 0 1 .1v3.1c-.3-.1-.6-.2-1-.2-1.3 0-2.3 1-2.3 2.3s1 2.3 2.3 2.3 2.3-1 2.3-2.3V2.5h3c0 2.5 2 4.5 4.5 4.5z"/>
+          </svg>
+        </a>
+        <a href="https://www.linkedin.com/company/blame-opal/" target="_blank" rel="noopener" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M5 3.5C5 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 5 2.12 5 3.5zM.22 8h4.56v14H.22V8zm7.5 0h4.37v1.92h.06c.61-1.15 2.1-2.36 4.32-2.36 4.62 0 5.47 3.04 5.47 7V22h-4.56v-6.6c0-1.57-.03-3.6-2.2-3.6-2.2 0-2.53 1.72-2.53 3.49V22H7.72V8z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="scanlines"></div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const frame = document.getElementById('frame');
+
+  // Logical resolution (set dynamically based on viewport orientation)
+  let LOGICAL_W = 480;
+  let LOGICAL_H = 360;
+
+  function resize() {
+    const rect = frame.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    // Pick a logical resolution that matches the frame's aspect, so the playfield
+    // can adapt to portrait phones without squishing the game.
+    const ratio = rect.width / rect.height;
+    if (ratio >= 1) {
+      // Landscape-ish
+      LOGICAL_W = 480;
+      LOGICAL_H = Math.round(LOGICAL_W / ratio);
+    } else {
+      // Portrait
+      LOGICAL_H = 640;
+      LOGICAL_W = Math.round(LOGICAL_H * ratio);
+    }
+
+    canvas.width = LOGICAL_W * dpr;
+    canvas.height = LOGICAL_H * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+
+    // Re-position the player so it doesn't end up off-screen
+    if (player) {
+      player.x = Math.max(player.w/2, Math.min(LOGICAL_W - player.w/2, player.x));
+      player.y = LOGICAL_H - 26;
+    }
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 100));
+
+  // 5x7 pixel font
+  const FONT = {
+    'B': ["11110","10001","10001","11110","10001","10001","11110"],
+    'L': ["10000","10000","10000","10000","10000","10000","11111"],
+    'A': ["01110","10001","10001","11111","10001","10001","10001"],
+    'M': ["10001","11011","10101","10001","10001","10001","10001"],
+    'E': ["11111","10000","10000","11110","10000","10000","11111"],
+    'O': ["01110","10001","10001","10001","10001","10001","01110"],
+    'P': ["11110","10001","10001","11110","10000","10000","10000"],
+    ' ': ["00000","00000","00000","00000","00000","00000","00000"],
+  };
+
+  const WORD = "BLAME OPAL";
+  const LETTER_GAP = 1;
+
+  // Game state
+  let pixels = [];
+  let bullets = [];
+  let particles = [];
+  let powerups = [];
+
+  let player = {
+    x: 240,
+    y: 334,
+    w: 26,
+    h: 10,
+    speed: 220,
+  };
+
+  let score = 0;
+  let level = 1;
+  let descentSpeed = 12;
+  let lastFire = 0;
+  let running = false;
+  let gameOver = false;
+
+  // Power-ups (stackable)
+  // type: 'rapid' | 'spread' | 'explode' | 'freeze' | 'nuke' (nuke is instant, not stored)
+  let activePowers = new Map(); // type -> expiresAt timestamp
+  let flashAlpha = 0;          // white flash overlay for nuke
+  const POWER_DURATION = 8000;  // ms
+  const FREEZE_DURATION = 5000; // ms
+  const BASE_COOLDOWN = 160;
+  const RAPID_COOLDOWN = 55;
+  const EXPLODE_COOLDOWN = 380;
+  // Tune this to make the rare Nuke drop more or less likely.
+  // 0.005 == 0.5% of every power-up drop will be a Nuke. Roughly ≈ 1 per 100 games of casual play.
+  const NUKE_DROP_CHANCE = 0.005;
+
+  function hasPower(type) {
+    if (!activePowers.has(type)) return false;
+    return activePowers.get(type) > performance.now();
+  }
+  function clearExpiredPowers() {
+    const now = performance.now();
+    for (const [type, exp] of activePowers) {
+      if (exp <= now) activePowers.delete(type);
+    }
+  }
+
+  const scoreEl = document.getElementById('score');
+  const levelEl = document.getElementById('level');
+  const remainingEl = document.getElementById('remaining');
+  const powerStatusEl = document.getElementById('powerStatus');
+  const startScreen = document.getElementById('startScreen');
+  const endScreen = document.getElementById('endScreen');
+  const endTitle = document.getElementById('endTitle');
+  const endMessage = document.getElementById('endMessage');
+  const finalScore = document.getElementById('finalScore');
+  const finalLevel = document.getElementById('finalLevel');
+
+  function pixelSizeForLevel() {
+    // Scale the letter pixel size based on the smaller dimension so the word
+    // always fits comfortably.
+    const totalUnits = WORD.length * 5 + (WORD.length - 1) * LETTER_GAP;
+    const maxByWidth = Math.floor((LOGICAL_W - 24) / totalUnits);
+    const maxByHeight = Math.floor((LOGICAL_H * 0.25) / 7);
+    return Math.max(3, Math.min(8, maxByWidth, maxByHeight));
+  }
+
+  function buildWordPixels(speed) {
+    const PIXEL_SIZE = pixelSizeForLevel();
+    let totalUnits = 0;
+    for (let i = 0; i < WORD.length; i++) {
+      totalUnits += 5;
+      if (i < WORD.length - 1) totalUnits += LETTER_GAP;
+    }
+    const totalWidth = totalUnits * PIXEL_SIZE;
+    const startX = Math.floor((LOGICAL_W - totalWidth) / 2);
+    const startY = Math.max(48, Math.floor(LOGICAL_H * 0.12));
+
+    const arr = [];
+    let cursorX = startX;
+    for (let ci = 0; ci < WORD.length; ci++) {
+      const ch = WORD[ci];
+      const glyph = FONT[ch] || FONT[' '];
+      for (let r = 0; r < glyph.length; r++) {
+        for (let c = 0; c < glyph[r].length; c++) {
+          if (glyph[r][c] === '1') {
+            arr.push({
+              x: cursorX + c * PIXEL_SIZE,
+              y: startY + r * PIXEL_SIZE,
+              w: PIXEL_SIZE,
+              h: PIXEL_SIZE,
+              vy: speed,
+              alive: true,
+            });
+          }
+        }
+      }
+      cursorX += (5 + LETTER_GAP) * PIXEL_SIZE;
+    }
+    return arr;
+  }
+
+  const MAX_LEVEL = 100;
+
+  function speedForLevel(lvl) {
+    // Gentle early curve that ramps notably from ~level 20 onward.
+    // L1≈14, L10≈31, L25≈72, L50≈154, L100≈350 px/sec.
+    return 14 + Math.pow(Math.max(0, lvl - 1), 1.3);
+  }
+
+  function startLevel(newLevel) {
+    level = newLevel;
+    descentSpeed = speedForLevel(level);
+    pixels = buildWordPixels(descentSpeed);
+    bullets = [];
+    particles = [];
+    powerups = [];
+    // Always start a fresh level with no carry-over buffs.
+    // This guarantees pixels descend immediately and avoids the "stuck" feeling.
+    activePowers.clear();
+    flashAlpha = 0;
+    updatePowerHUD();
+    levelEl.textContent = level + ' / ' + MAX_LEVEL;
+    remainingEl.textContent = pixels.length;
+  }
+
+  function startGame() {
+    score = 0;
+    scoreEl.textContent = score;
+    gameOver = false;
+    running = true;
+    resize();
+    player.x = LOGICAL_W / 2;
+    player.y = LOGICAL_H - 26;
+    startLevel(1); // also resets activePowers + flashAlpha + HUD
+    startScreen.classList.add('hidden');
+    endScreen.classList.add('hidden');
+  }
+
+  function endGame(won) {
+    running = false;
+    gameOver = true;
+    endTitle.textContent = won ? 'YOU BEAT BLAME OPAL' : 'GAME OVER';
+    endMessage.textContent = won
+      ? 'You cleared all 100 levels. Legend.'
+      : 'The pixels reached the ground.';
+    finalScore.textContent = score;
+    finalLevel.textContent = level;
+    endScreen.classList.remove('hidden');
+  }
+
+  // Input
+  const keys = {};
+  let firing = false;
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      firing = true;
+    }
+    keys[e.code] = true;
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') firing = false;
+    keys[e.code] = false;
+  });
+  canvas.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    firing = true;
+  });
+  window.addEventListener('mouseup', () => firing = false);
+  let mouseX = null;
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const ratio = LOGICAL_W / rect.width;
+    mouseX = (e.clientX - rect.left) * ratio;
+  });
+  canvas.addEventListener('mouseleave', () => { mouseX = null; });
+
+  // Touch — finger drag controls ship directly, holding fires
+  let touchX = null;
+  function touchUpdate(e) {
+    if (!e.touches || !e.touches[0]) return;
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const ratio = LOGICAL_W / rect.width;
+    touchX = (t.clientX - rect.left) * ratio;
+  }
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    firing = true;
+    touchUpdate(e);
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    touchUpdate(e);
+  }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (!e.touches || e.touches.length === 0) {
+      firing = false;
+      touchX = null;
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchcancel', () => {
+    firing = false;
+    touchX = null;
+  });
+
+  function getFireCooldown() {
+    // Rapid takes priority; explosive otherwise slows you down a touch.
+    if (hasPower('rapid')) return RAPID_COOLDOWN;
+    if (hasPower('explode')) return EXPLODE_COOLDOWN;
+    return BASE_COOLDOWN;
+  }
+
+  function fireBullet() {
+    // Stacking: spread = how many shots, explode = bullet behaviour, rapid = fire rate.
+    const angles = hasPower('spread') ? [-0.35, 0, 0.35] : [0];
+    const isExplode = hasPower('explode');
+    const isRapid = hasPower('rapid');
+    const speed = isExplode ? 280 : (isRapid ? 380 : 340);
+    let kind = 'normal';
+    if (isExplode) kind = 'explode';
+    else if (hasPower('spread')) kind = 'spread';
+    else if (isRapid) kind = 'rapid';
+    for (const a of angles) {
+      bullets.push({
+        x: player.x,
+        y: player.y - 6,
+        vx: Math.sin(a) * speed,
+        vy: -Math.cos(a) * speed,
+        w: isExplode ? 4 : 2,
+        h: 8,
+        kind,
+      });
+    }
+  }
+
+  function spawnExplosion(x, y, color) {
+    const c = color || '255,255,255';
+    for (let i = 0; i < 8; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 30 + Math.random() * 80;
+      particles.push({
+        x, y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        life: 0.4 + Math.random() * 0.3,
+        age: 0,
+        color: c,
+      });
+    }
+  }
+
+  function spawnBigExplosion(x, y) {
+    for (let i = 0; i < 20; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 60 + Math.random() * 140;
+      particles.push({
+        x, y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        life: 0.5 + Math.random() * 0.4,
+        age: 0,
+        color: '255,180,60',
+      });
+    }
+  }
+
+  function maybeDropPowerup(x, y) {
+    // Base 8% drop chance, reduced if your stack is already big,
+    // and boosted at higher levels so 90+ stays survivable.
+    const stackPenalty = Math.min(0.04, activePowers.size * 0.012);
+    const levelBoost = Math.min(0.06, level * 0.0008);
+    const chance = 0.08 + levelBoost - stackPenalty;
+    if (Math.random() >= chance) return;
+
+    // Roll for type. Nuke is extremely rare.
+    let type;
+    if (Math.random() < NUKE_DROP_CHANCE) {
+      type = 'nuke';
+    } else {
+      const types = ['rapid', 'spread', 'explode', 'freeze'];
+      type = types[Math.floor(Math.random() * types.length)];
+    }
+    powerups.push({
+      x, y,
+      vy: type === 'nuke' ? 50 : 60,
+      w: type === 'nuke' ? 18 : 14,
+      h: type === 'nuke' ? 18 : 14,
+      type,
+      wobble: Math.random() * Math.PI * 2,
+    });
+  }
+
+  function damagePixelAt(x, y, radius) {
+    // For explosive: destroy all alive pixels within radius
+    let hits = 0;
+    for (const p of pixels) {
+      if (!p.alive) continue;
+      const cx = p.x + p.w/2;
+      const cy = p.y + p.h/2;
+      const dx = cx - x;
+      const dy = cy - y;
+      if (dx*dx + dy*dy <= radius*radius) {
+        p.alive = false;
+        hits++;
+        score += 10;
+        spawnExplosion(cx, cy, '255,255,255');
+        maybeDropPowerup(cx, cy);
+      }
+    }
+    return hits;
+  }
+
+  const POWER_META = {
+    rapid:   { label: 'RAPID FIRE',  color: '#67FF67', duration: POWER_DURATION },
+    spread:  { label: 'SPREAD SHOT', color: '#ff8a00', duration: POWER_DURATION },
+    explode: { label: 'EXPLOSIVE',   color: '#ff2e63', duration: POWER_DURATION },
+    freeze:  { label: 'FREEZE',      color: '#8ad9ff', duration: FREEZE_DURATION },
+    nuke:    { label: 'NUKE',        color: '#ffd400', duration: 0 },
+  };
+
+  function applyPower(type) {
+    if (type === 'nuke') {
+      detonateNuke();
+      return;
+    }
+    const meta = POWER_META[type];
+    if (!meta) return;
+    // Stack: refresh timer if same type collected, otherwise add alongside existing powers.
+    const now = performance.now();
+    const existing = activePowers.get(type);
+    // If still active, extend by duration up to a sensible cap.
+    const newExp = existing && existing > now
+      ? Math.min(now + meta.duration * 2, existing + meta.duration)
+      : now + meta.duration;
+    activePowers.set(type, newExp);
+    updatePowerHUD();
+  }
+
+  function detonateNuke() {
+    // Big white flash + destroy every currently-spawned pixel.
+    flashAlpha = 1.0;
+    let cleared = 0;
+    for (const p of pixels) {
+      if (!p.alive) continue;
+      p.alive = false;
+      cleared++;
+      score += 15;
+      spawnBigExplosion(p.x + p.w/2, p.y + p.h/2);
+    }
+    if (cleared > 0) score += 250;
+    scoreEl.textContent = score;
+    updatePowerHUD();
+  }
+
+  function updatePowerHUD() {
+    clearExpiredPowers();
+    if (activePowers.size === 0) {
+      powerStatusEl.innerHTML = '';
+      return;
+    }
+    const order = ['rapid', 'spread', 'explode', 'freeze'];
+    const now = performance.now();
+    powerStatusEl.innerHTML = order
+      .filter(t => activePowers.has(t))
+      .map(t => {
+        const meta = POWER_META[t];
+        const remaining = Math.max(0, Math.ceil((activePowers.get(t) - now) / 1000));
+        return `<span class="badge" style="color:${meta.color}">${meta.label} ${remaining}S</span>`;
+      })
+      .join('');
+  }
+
+  let hudTimer = 0;
+
+  function update(dt) {
+    if (!running) return;
+
+    // Decay the nuke white-flash overlay
+    if (flashAlpha > 0) {
+      flashAlpha = Math.max(0, flashAlpha - dt * 2.2);
+    }
+    // Refresh HUD ~4x per second so timers tick down visibly
+    hudTimer += dt;
+    if (hudTimer > 0.25) {
+      hudTimer = 0;
+      updatePowerHUD();
+    }
+
+    // Player movement — touch/mouse-drag has priority for direct control
+    if (touchX !== null) {
+      // direct follow (snappy on mobile)
+      const diff = touchX - player.x;
+      player.x += diff * Math.min(1, dt * 18);
+    } else if (mouseX !== null && (keys['ArrowLeft'] || keys['ArrowRight'] || keys['KeyA'] || keys['KeyD']) === false) {
+      const diff = mouseX - player.x;
+      player.x += diff * Math.min(1, dt * 12);
+    }
+    if (keys['ArrowLeft'] || keys['KeyA']) player.x -= player.speed * dt;
+    if (keys['ArrowRight'] || keys['KeyD']) player.x += player.speed * dt;
+    player.x = Math.max(player.w/2, Math.min(LOGICAL_W - player.w/2, player.x));
+
+    // Firing
+    if (firing) {
+      const now = performance.now();
+      if (now - lastFire > getFireCooldown()) {
+        fireBullet();
+        lastFire = now;
+      }
+    }
+
+    // Bullets
+    for (const b of bullets) {
+      b.x += (b.vx || 0) * dt;
+      b.y += b.vy * dt;
+    }
+    bullets = bullets.filter(b => b.y + b.h > -20 && b.x > -20 && b.x < LOGICAL_W + 20);
+
+    // Powerups fall down
+    for (const pu of powerups) {
+      pu.y += pu.vy * dt;
+      pu.wobble += dt * 4;
+    }
+    // Player collects power-ups
+    powerups = powerups.filter(pu => {
+      const collected =
+        pu.x + pu.w/2 > player.x - player.w/2 - 4 &&
+        pu.x - pu.w/2 < player.x + player.w/2 + 4 &&
+        pu.y + pu.h/2 > player.y - 10 &&
+        pu.y - pu.h/2 < player.y + player.h + 4;
+      if (collected) {
+        applyPower(pu.type);
+        const colorMap = {
+          rapid: '103,255,103',
+          spread: '255,138,0',
+          explode: '255,46,99',
+          freeze: '138,217,255',
+          nuke: '255,212,0',
+        };
+        spawnExplosion(pu.x, pu.y, colorMap[pu.type] || '255,255,255');
+        score += pu.type === 'nuke' ? 100 : 25;
+        scoreEl.textContent = score;
+        return false;
+      }
+      if (pu.y > LOGICAL_H) return false;
+      return true;
+    });
+
+    // Pixels descend (held in place if Freeze is active)
+    const frozen = hasPower('freeze');
+    let groundHit = false;
+    for (const p of pixels) {
+      if (!p.alive) continue;
+      if (!frozen) p.y += p.vy * dt;
+      if (p.y + p.h >= LOGICAL_H - 6) {
+        groundHit = true;
+      }
+    }
+
+    // Collisions: bullets vs pixels
+    for (const b of bullets) {
+      if (b.y < -10) continue;
+      for (const p of pixels) {
+        if (!p.alive) continue;
+        if (b.x >= p.x - 1 && b.x <= p.x + p.w + 1 && b.y <= p.y + p.h && b.y >= p.y - 2) {
+          if (b.kind === 'explode') {
+            // Big radius
+            const hits = damagePixelAt(b.x, b.y, 22);
+            spawnBigExplosion(b.x, b.y);
+            scoreEl.textContent = score;
+            b.y = -200;
+          } else {
+            p.alive = false;
+            b.y = -200;
+            score += 10;
+            scoreEl.textContent = score;
+            spawnExplosion(p.x + p.w/2, p.y + p.h/2, '255,255,255');
+            maybeDropPowerup(p.x + p.w/2, p.y + p.h/2);
+          }
+          break;
+        }
+      }
+    }
+    bullets = bullets.filter(b => b.y > -50);
+
+    // Particles
+    for (const pt of particles) {
+      pt.age += dt;
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.vy += 200 * dt;
+    }
+    particles = particles.filter(pt => pt.age < pt.life);
+
+    const remaining = pixels.filter(p => p.alive).length;
+    remainingEl.textContent = remaining;
+
+    if (groundHit) {
+      endGame(false);
+      return;
+    }
+    if (remaining === 0) {
+      score += 100 + level * 10; // bigger bonus at higher levels
+      scoreEl.textContent = score;
+      if (level >= MAX_LEVEL) {
+        endGame(true);
+        return;
+      }
+      startLevel(level + 1);
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = '#05060a';
+    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+
+    // Grid background
+    ctx.strokeStyle = 'rgba(103,255,103,0.06)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < LOGICAL_W; x += 20) {
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, 0);
+      ctx.lineTo(x + 0.5, LOGICAL_H);
+      ctx.stroke();
+    }
+    for (let y = 0; y < LOGICAL_H; y += 20) {
+      ctx.beginPath();
+      ctx.moveTo(0, y + 0.5);
+      ctx.lineTo(LOGICAL_W, y + 0.5);
+      ctx.stroke();
+    }
+
+    // Ground line
+    ctx.fillStyle = '#ff2e63';
+    ctx.fillRect(0, LOGICAL_H - 6, LOGICAL_W, 1);
+    ctx.fillStyle = 'rgba(255,46,99,0.25)';
+    ctx.fillRect(0, LOGICAL_H - 5, LOGICAL_W, 5);
+
+    // Pixels — strong cyan tint + screen tint when Freeze is active so it's never confused with a bug
+    const frozenNow = hasPower('freeze');
+    if (frozenNow) {
+      // Screen-wide cold tint
+      ctx.fillStyle = 'rgba(138,217,255,0.10)';
+      ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+      // Edge frost glow
+      const t = performance.now() / 300;
+      const a = 0.25 + Math.sin(t) * 0.05;
+      ctx.fillStyle = `rgba(138,217,255,${a})`;
+      ctx.fillRect(0, 0, LOGICAL_W, 2);
+      ctx.fillRect(0, LOGICAL_H - 8, LOGICAL_W, 2);
+      ctx.fillRect(0, 0, 2, LOGICAL_H);
+      ctx.fillRect(LOGICAL_W - 2, 0, 2, LOGICAL_H);
+    }
+    ctx.fillStyle = frozenNow ? '#8ad9ff' : '#ffffff';
+    for (const p of pixels) {
+      if (!p.alive) continue;
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+    }
+    ctx.fillStyle = frozenNow ? 'rgba(20,60,100,0.55)' : 'rgba(0,0,0,0.18)';
+    for (const p of pixels) {
+      if (!p.alive) continue;
+      ctx.fillRect(p.x + p.w - 1, p.y, 1, p.h);
+      ctx.fillRect(p.x, p.y + p.h - 1, p.w, 1);
+    }
+    if (frozenNow) {
+      // Tiny snow drift sprinkled across the playfield
+      const snowSeed = Math.floor(performance.now() / 80);
+      ctx.fillStyle = 'rgba(220,240,255,0.7)';
+      for (let i = 0; i < 14; i++) {
+        const sx = ((i * 53 + snowSeed * 7) % LOGICAL_W);
+        const sy = ((i * 89 + snowSeed * 11) % LOGICAL_H);
+        ctx.fillRect(sx, sy, 1, 1);
+      }
+    }
+
+    // Bullets
+    for (const b of bullets) {
+      if (b.kind === 'explode') {
+        ctx.fillStyle = '#ff2e63';
+        ctx.fillRect(b.x - 2, b.y, 4, 8);
+        ctx.fillStyle = '#ffd400';
+        ctx.fillRect(b.x - 1, b.y + 2, 2, 4);
+      } else if (b.kind === 'spread') {
+        ctx.fillStyle = '#ff8a00';
+        ctx.fillRect(b.x - 1, b.y, 2, 7);
+      } else if (b.kind === 'rapid') {
+        ctx.fillStyle = '#67FF67';
+        ctx.fillRect(b.x - 1, b.y, 2, 9);
+      } else {
+        ctx.fillStyle = '#67FF67';
+        ctx.fillRect(b.x - 1, b.y, 2, 8);
+      }
+    }
+
+    // Powerups
+    for (const pu of powerups) {
+      drawPowerup(pu);
+    }
+
+    // Particles
+    for (const pt of particles) {
+      const a = 1 - pt.age / pt.life;
+      ctx.fillStyle = `rgba(${pt.color || '255,255,255'},${a})`;
+      ctx.fillRect(pt.x, pt.y, 2, 2);
+    }
+
+    // Player ship
+    drawShip(player.x, player.y);
+
+    // Nuke white-flash overlay (drawn last so it covers everything)
+    if (flashAlpha > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, flashAlpha)})`;
+      ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    }
+  }
+
+  function drawPowerup(pu) {
+    const wob = Math.sin(pu.wobble) * 2;
+    const x = pu.x - pu.w/2;
+    const y = pu.y - pu.h/2 + wob;
+    let bg = '#fff', fg = '#02030a', letter = '?';
+    if (pu.type === 'rapid')   { bg = '#67FF67'; fg = '#02030a'; letter = 'R'; }
+    if (pu.type === 'spread')  { bg = '#ff8a00'; fg = '#02030a'; letter = 'S'; }
+    if (pu.type === 'explode') { bg = '#ff2e63'; fg = '#ffffff'; letter = 'E'; }
+    if (pu.type === 'freeze')  { bg = '#8ad9ff'; fg = '#02030a'; letter = 'F'; }
+    if (pu.type === 'nuke')    { bg = '#ffd400'; fg = '#02030a'; letter = 'N'; }
+
+    // Rare nuke gets a pulsing glow halo
+    if (pu.type === 'nuke') {
+      const pulse = 0.5 + Math.sin(pu.wobble * 2) * 0.5;
+      ctx.fillStyle = `rgba(255,212,0,${0.15 + pulse * 0.25})`;
+      const halo = pu.w + 6 + pulse * 4;
+      ctx.fillRect(pu.x - halo/2, pu.y - halo/2 + wob, halo, halo);
+    }
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(x, y, pu.w, pu.h);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(x + pu.w - 1, y, 1, pu.h);
+    ctx.fillRect(x, y + pu.h - 1, pu.w, 1);
+    ctx.fillStyle = fg;
+    ctx.font = `bold ${pu.type === 'nuke' ? 12 : 10}px "Roboto Mono", "Courier New", monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(letter, pu.x, pu.y + wob + 1);
+  }
+
+  function drawShip(cx, cy) {
+    // Stack of active powers tints the ship; multiple powers add an outer glow ring.
+    let color = '#67FF67';
+    if (hasPower('explode')) color = '#ff2e63';
+    else if (hasPower('spread')) color = '#ff8a00';
+    else if (hasPower('freeze')) color = '#8ad9ff';
+    else if (hasPower('rapid')) color = '#67FF67';
+
+    // Outer glow ring scales with number of stacked powers
+    const stack = activePowers.size;
+    if (stack > 0) {
+      const t = performance.now() / 200;
+      const ringAlpha = 0.15 + 0.1 * stack + Math.sin(t) * 0.05;
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(0.6, ringAlpha)})`;
+      ctx.fillRect(cx - 14, cy - 10, 28, 1);
+      ctx.fillRect(cx - 14, cy + 7,  28, 1);
+      ctx.fillRect(cx - 14, cy - 10, 1, 18);
+      ctx.fillRect(cx + 13, cy - 10, 1, 18);
+    }
+
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - 12, cy + 2, 24, 4);
+    ctx.fillRect(cx - 8, cy - 2, 16, 4);
+    ctx.fillRect(cx - 2, cy - 8, 4, 6);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 1, cy - 9, 2, 2);
+
+    // little engine flicker
+    if (Math.random() < 0.6) {
+      ctx.fillStyle = 'rgba(255,200,80,0.8)';
+      ctx.fillRect(cx - 4, cy + 6, 2, 2);
+      ctx.fillRect(cx + 2, cy + 6, 2, 2);
+    }
+  }
+
+  let lastT = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('restartBtn').addEventListener('click', startGame);
+
+  // Prevent the page itself from scrolling when interacting with the canvas
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+
+  resize();
+  draw();
+  requestAnimationFrame((t) => { lastT = t; loop(t); });
+})();
+</script>
+</body>
+</html>
