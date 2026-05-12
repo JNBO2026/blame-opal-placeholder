@@ -1,8 +1,8 @@
-# Blame Opal — Placeholder Game
+# BLAMEOPAL — Placeholder Game
 
-A retro pixel-shooter placeholder site for [Blame Opal Studio](https://blameopal.studio).
+A retro pixel-shooter placeholder site for [BLAMEOPAL](https://blameopal.studio) — an independent London creative studio for founders building things worth remembering.
 
-While the studio site is being built, visitors can shoot the falling **BLAME OPAL** word out of the sky, collect stackable power-ups, and chase the level-100 win screen.
+While the studio site is being built, visitors can shoot the falling **BLAMEOPAL** word out of the sky, collect stackable power-ups, and chase the level-100 win screen.
 
 ## Run locally
 
@@ -17,7 +17,7 @@ Then open [http://localhost:3000](http://localhost:3000).
 
 - **Move:** ◄ ► / A / D / drag finger or mouse
 - **Fire:** SPACE / click / tap & hold
-- Destroy every white pixel of "BLAME OPAL" before any of them reach the red ground line.
+- Destroy every white pixel of "BLAMEOPAL" before any of them reach the red ground line.
 - Catch power-ups dropped by destroyed pixels:
   - **R** Rapid fire
   - **S** Spread shot (3 bullets in a fan)
@@ -64,7 +64,7 @@ That creates the `scores` table with RLS policies allowing public read + insert 
 
 - Instagram: [@blameopal](https://www.instagram.com/blameopal)
 - TikTok: [@blameopal](https://www.tiktok.com/@blameopal)
-- LinkedIn: [Blame Opal](https://www.linkedin.com/company/blame-opal/)
+- LinkedIn: [BLAMEOPAL](https://www.linkedin.com/company/blame-opal/)
 - Email: [james@blameopal.studio](mailto:james@blameopal.studio)
 
 ## License

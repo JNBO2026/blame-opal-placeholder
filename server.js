@@ -16,5 +16,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Blame Opal placeholder running at http://localhost:${PORT}`);
+  console.log(`BLAMEOPAL placeholder running at http://localhost:${PORT}`);
 });

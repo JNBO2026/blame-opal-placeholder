@@ -1,4 +1,4 @@
--- Blame Opal — Leaderboard schema
+-- BLAMEOPAL — Leaderboard schema
 -- Run this once inside Supabase → SQL Editor → New query → paste → Run.
 -- Safe to re-run (uses IF NOT EXISTS and creates policies idempotently).
 
