@@ -244,6 +244,99 @@
   }
   .socials svg { display: block; }
 
+  .nameEntry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+  }
+  .nameEntry label {
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+  .nameEntry input {
+    width: 200px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.5);
+    border: 2px solid rgba(103,255,103,0.4);
+    border-radius: 3px;
+    color: #fff;
+    font-family: var(--font-body);
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: 12px;
+    text-align: center;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(103,255,103,0.6);
+    outline: none;
+    caret-color: var(--accent);
+  }
+  .nameEntry input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(103,255,103,0.4);
+  }
+  .scoreStatus {
+    margin-top: 10px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-align: center;
+    min-height: 16px;
+  }
+  .scoreStatus.error { color: var(--danger); }
+
+  .leaderboard {
+    width: min(440px, 100%);
+    margin: 0 auto;
+  }
+  .leaderboard .month {
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .leaderboardTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #fff;
+  }
+  .leaderboardTable th {
+    font-weight: 400;
+    text-align: left;
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(103,255,103,0.3);
+  }
+  .leaderboardTable th.num,
+  .leaderboardTable td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .leaderboardTable td {
+    padding: 8px 10px;
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+  }
+  .leaderboardTable tr.me td {
+    background: rgba(103,255,103,0.12);
+    color: var(--accent);
+    text-shadow: 0 0 6px rgba(103,255,103,0.4);
+  }
+  .leaderboardTable tr.empty td {
+    color: rgba(255,255,255,0.25);
+  }
+  .leaderboardEmpty {
+    text-align: center;
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 20px 0;
+  }
+
   .actions {
     display: flex;
     flex-direction: column;
@@ -353,6 +446,7 @@
       </div>
       <div class="actions">
         <button id="startBtn">Start Game</button>
+        <button id="leaderboardBtn" class="btn">Leaderboard</button>
         <a class="btn secondary" href="mailto:james@blameopal.studio">Get in Touch</a>
       </div>
       <div class="socials">
@@ -381,8 +475,17 @@
       <p id="endMessage">The pixels reached the ground.</p>
       <p>Final Score: <span id="finalScore">0</span></p>
       <p>Level Reached: <span id="finalLevel">1</span></p>
+
+      <div class="nameEntry" id="nameEntry">
+        <label for="nameInput">Enter your initials</label>
+        <input id="nameInput" type="text" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" placeholder="_____" />
+      </div>
+      <div class="scoreStatus" id="scoreStatus"></div>
+
       <div class="actions">
+        <button id="submitScoreBtn">Submit Score</button>
         <button id="restartBtn">Play Again</button>
+        <button id="endLeaderboardBtn" class="btn">View Leaderboard</button>
         <a class="btn secondary" href="mailto:james@blameopal.studio">Get in Touch</a>
       </div>
       <div class="socials">
@@ -403,6 +506,28 @@
             <path d="M5 3.5C5 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 5 2.12 5 3.5zM.22 8h4.56v14H.22V8zm7.5 0h4.37v1.92h.06c.61-1.15 2.1-2.36 4.32-2.36 4.62 0 5.47 3.04 5.47 7V22h-4.56v-6.6c0-1.57-.03-3.6-2.2-3.6-2.2 0-2.53 1.72-2.53 3.49V22H7.72V8z"/>
           </svg>
         </a>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="leaderboardScreen">
+      <h2 style="color:var(--accent); text-shadow: 0 0 12px var(--accent);">LEADERBOARD</h2>
+      <div class="leaderboard">
+        <div class="month" id="leaderboardMonth">—</div>
+        <table class="leaderboardTable" id="leaderboardTable">
+          <thead>
+            <tr>
+              <th style="width:36px;">#</th>
+              <th>Name</th>
+              <th class="num">Score</th>
+              <th class="num">Lvl</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+        <div class="leaderboardEmpty hidden" id="leaderboardEmpty">No scores yet this month. Be the first.</div>
+      </div>
+      <div class="actions">
+        <button id="leaderboardBackBtn">Back</button>
       </div>
     </div>
 
@@ -613,6 +738,7 @@
       : 'The pixels reached the ground.';
     finalScore.textContent = score;
     finalLevel.textContent = level;
+    resetScoreSubmissionUI();
     endScreen.classList.remove('hidden');
   }
 
@@ -1160,6 +1286,181 @@
 
   document.getElementById('startBtn').addEventListener('click', startGame);
   document.getElementById('restartBtn').addEventListener('click', startGame);
+
+  // ---------- Leaderboard (Supabase) ----------
+  const SUPABASE_URL = 'https://xvnsbighxlrmrdmdiqty.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_isRdKf7SbC_73BmNxgMq4w_fkPfYLLv';
+  const LEADERBOARD_LIMIT = 10;
+  const MONTH_NAMES = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+
+  const leaderboardScreen = document.getElementById('leaderboardScreen');
+  const leaderboardBody = document.getElementById('leaderboardBody');
+  const leaderboardEmpty = document.getElementById('leaderboardEmpty');
+  const leaderboardMonth = document.getElementById('leaderboardMonth');
+  const leaderboardTable = document.getElementById('leaderboardTable');
+  const nameEntry = document.getElementById('nameEntry');
+  const nameInput = document.getElementById('nameInput');
+  const submitScoreBtn = document.getElementById('submitScoreBtn');
+  const scoreStatus = document.getElementById('scoreStatus');
+  let lastSubmittedRowId = null;
+
+  function currentMonthStartIso() {
+    const d = new Date();
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0)).toISOString();
+  }
+  function currentMonthLabel() {
+    const d = new Date();
+    return MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => (
+      { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+    ));
+  }
+  function sanitizeName(raw) {
+    return String(raw || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 5);
+  }
+
+  async function fetchLeaderboard() {
+    const url = `${SUPABASE_URL}/rest/v1/scores`
+      + `?select=id,name,score,level,created_at`
+      + `&created_at=gte.${encodeURIComponent(currentMonthStartIso())}`
+      + `&order=score.desc,created_at.asc`
+      + `&limit=${LEADERBOARD_LIMIT}`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+      },
+    });
+    if (!res.ok) throw new Error('fetch failed: ' + res.status);
+    return res.json();
+  }
+
+  async function submitScore(name, scoreVal, levelVal) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify({ name, score: scoreVal, level: levelVal }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error('submit failed: ' + res.status + ' ' + text);
+    }
+    const rows = await res.json();
+    return rows[0];
+  }
+
+  function renderLeaderboard(rows) {
+    leaderboardMonth.textContent = currentMonthLabel();
+    leaderboardBody.innerHTML = '';
+    if (!rows || rows.length === 0) {
+      leaderboardTable.style.display = 'none';
+      leaderboardEmpty.classList.remove('hidden');
+      return;
+    }
+    leaderboardTable.style.display = '';
+    leaderboardEmpty.classList.add('hidden');
+    const filled = rows.length;
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      if (r.id && r.id === lastSubmittedRowId) tr.className = 'me';
+      tr.innerHTML =
+        `<td class="num">${i + 1}</td>` +
+        `<td>${esc(r.name)}</td>` +
+        `<td class="num">${Number(r.score).toLocaleString()}</td>` +
+        `<td class="num">${r.level}</td>`;
+      leaderboardBody.appendChild(tr);
+    });
+    // Empty rows to keep the table looking 10-deep
+    for (let i = filled; i < LEADERBOARD_LIMIT; i++) {
+      const tr = document.createElement('tr');
+      tr.className = 'empty';
+      tr.innerHTML = `<td class="num">${i + 1}</td><td>—</td><td class="num">—</td><td class="num">—</td>`;
+      leaderboardBody.appendChild(tr);
+    }
+  }
+
+  async function openLeaderboard() {
+    leaderboardMonth.textContent = currentMonthLabel();
+    leaderboardBody.innerHTML = '';
+    leaderboardEmpty.classList.add('hidden');
+    leaderboardScreen.classList.remove('hidden');
+    try {
+      const rows = await fetchLeaderboard();
+      renderLeaderboard(rows);
+    } catch (err) {
+      console.error(err);
+      leaderboardTable.style.display = 'none';
+      leaderboardEmpty.textContent = 'Could not load leaderboard. Try again later.';
+      leaderboardEmpty.classList.remove('hidden');
+    }
+  }
+
+  function closeLeaderboard() {
+    leaderboardScreen.classList.add('hidden');
+  }
+
+  function resetScoreSubmissionUI() {
+    scoreStatus.textContent = '';
+    scoreStatus.classList.remove('error');
+    nameEntry.classList.remove('hidden');
+    submitScoreBtn.disabled = false;
+    submitScoreBtn.style.display = '';
+    // Pre-fill with last used name if any
+    const remembered = localStorage.getItem('blameOpalName');
+    nameInput.value = sanitizeName(remembered || '');
+  }
+
+  nameInput.addEventListener('input', () => {
+    nameInput.value = sanitizeName(nameInput.value);
+  });
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitScoreBtn.click();
+    }
+  });
+
+  submitScoreBtn.addEventListener('click', async () => {
+    const name = sanitizeName(nameInput.value);
+    if (name.length < 1) {
+      scoreStatus.textContent = 'Enter at least one character.';
+      scoreStatus.classList.add('error');
+      nameInput.focus();
+      return;
+    }
+    submitScoreBtn.disabled = true;
+    scoreStatus.classList.remove('error');
+    scoreStatus.textContent = 'Submitting…';
+    try {
+      const row = await submitScore(name, score, level);
+      lastSubmittedRowId = row && row.id ? row.id : null;
+      localStorage.setItem('blameOpalName', name);
+      scoreStatus.textContent = 'Score saved.';
+      nameEntry.classList.add('hidden');
+      submitScoreBtn.style.display = 'none';
+      // Auto-open leaderboard so the player sees their rank
+      setTimeout(openLeaderboard, 500);
+    } catch (err) {
+      console.error(err);
+      submitScoreBtn.disabled = false;
+      scoreStatus.classList.add('error');
+      scoreStatus.textContent = 'Could not save score. Try again.';
+    }
+  });
+
+  document.getElementById('leaderboardBtn').addEventListener('click', openLeaderboard);
+  document.getElementById('endLeaderboardBtn').addEventListener('click', openLeaderboard);
+  document.getElementById('leaderboardBackBtn').addEventListener('click', closeLeaderboard);
 
   // Prevent the page itself from scrolling when interacting with the canvas
   document.addEventListener('gesturestart', (e) => e.preventDefault());

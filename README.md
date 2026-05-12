@@ -33,14 +33,28 @@ Then open [http://localhost:3000](http://localhost:3000).
 - Express static-file server (Node ≥ 18)
 - Roboto Mono (body) + custom WetInk Display (headline) fonts
 - Fully responsive — playable on desktop, tablet, and mobile
+- Supabase-backed monthly leaderboard (top 10, resets automatically on the 1st)
+
+## Leaderboard setup
+
+The Supabase config is embedded in `public/index.html` (publishable key, safe to ship).
+One-time setup to create the table on a fresh Supabase project:
+
+1. Open Supabase → **SQL Editor** → New query
+2. Paste the contents of [`supabase/schema.sql`](supabase/schema.sql)
+3. Click **Run**
+
+That creates the `scores` table with RLS policies allowing public read + insert only.
 
 ## Project structure
 
 ```
 .
 ├── public/
-│   ├── index.html         # game + UI
+│   ├── index.html         # game + UI + leaderboard
 │   └── fonts/             # WetInk Display
+├── supabase/
+│   └── schema.sql         # one-time Supabase table setup
 ├── server.js              # Express static server
 ├── package.json
 └── README.md
